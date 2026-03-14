@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PlacementService.Api.Models;
@@ -36,21 +37,24 @@ public sealed class PlacementServiceFacade
         // TODO: if there are no items, return early
 
         // Step 2: collect distinct SSYK codes (normalize each code) from the jobSearch result. 
-        // HINT: use NormalizeSsyk(item.OccupationSsyk) with LINQ
+        IReadOnlyList<string?> occupationSsyk = result.Items.GroupBy(item => item.OccupationSsyk).Select(g => 
+        NormalizeSsyk(g.Key)).ToList();
 
         // Step 3: build a dictionary that maps SSYK with SalaryInfo using GetSalaryCachedAsync for each distinct SSYK.
-
+        Dictionary<string, SalaryInfo?> salaryBySsyk = new Dictionary<string, SalaryInfo?>();
+        foreach(var item in occupationSsyk)
+        {
+            var salaryInfo = GetSalaryCachedAsync(item,cancellationToken);
+            salaryBySsyk.Add(item,salaryInfo.Result);
+        }
         // Step 4: create a new list of PlacementItem where OccupationSsyk is normalized and Salary is looked up from the dictionary created in Step 3.
-        // HINT: use TryGetValue on the dictionary to look up the salary for each item's normalized SSYK. If no match is found, salary will be null.
-        // HINT: since PlacementItem is a record (not a class), you can use: item with { OccupationSsyk = normalized, Salary = salary } to create a copy with updated fields without rewriting all properties.
-        // NOTE: records behave like classes for most purposes — the key difference here is that their properties are immutable, so with is how you create a modified copy.
-
-        // References:
-        // C# records: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record
-        // with keyword: https://learn.microsoft.com/en-us/dotnet/csharp/tutorials/records#nondestructive-mutation
-
-        // TODO: return a PlacementSearchResponse with enriched items
-        throw new NotImplementedException();
+        List<PlacementItem> placementItems = result.Items.Select(item => 
+        {
+            var normalized = NormalizeSsyk(item.OccupationSsyk);
+            salaryBySsyk.TryGetValue(normalized, out SalaryInfo? salary);
+            return item with { OccupationSsyk = normalized, Salary = salary };
+        }).ToList();
+        return new PlacementSearchResponse(offset, limit, result.Total, placementItems);
     }
 
     public async Task<PlacementSummaryResponse> GetSummaryAsync(

@@ -33,3 +33,4 @@ C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\Placem
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Api\obj\Debug\net10.0\PlacementService.Api.pdb
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Api\obj\Debug\net10.0\PlacementService.Api.genruntimeconfig.cache
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Api\obj\Debug\net10.0\ref\PlacementService.Api.dll
+C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Api\obj\Debug\net10.0\PlacementService.Api.sourcelink.json

@@ -81,3 +81,4 @@ C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\Placem
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Ui\obj\Debug\net10.0\PlacementService.Ui.pdb
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Ui\obj\Debug\net10.0\PlacementService.Ui.genruntimeconfig.cache
 C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Ui\obj\Debug\net10.0\ref\PlacementService.Ui.dll
+C:\Users\Jessica\Desktop\Skola\Y3\Informationsinfrastruktur\Labb2\starter\PlacementService.Ui\obj\Debug\net10.0\PlacementService.Ui.sourcelink.json
