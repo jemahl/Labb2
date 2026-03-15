@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlacementService.Api")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ae0f1c9a72d3f8e8d9fc84f1bf7aa634ef4a8f2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+408601cc857587fd2796a22e6121663a6c9f94f0")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlacementService.Api")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlacementService.Api")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

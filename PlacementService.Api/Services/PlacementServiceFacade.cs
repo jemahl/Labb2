@@ -52,7 +52,7 @@ public sealed class PlacementServiceFacade
         {
             var normalized = NormalizeSsyk(item.OccupationSsyk);
             salaryBySsyk.TryGetValue(normalized, out SalaryInfo? salary);
-            return item with { OccupationSsyk = normalized, Salary = salary };
+            return item with {OccupationSsyk = normalized, Salary = salary};
         }).ToList();
         return new PlacementSearchResponse(offset, limit, result.Total, placementItems);
     }
@@ -75,10 +75,12 @@ public sealed class PlacementServiceFacade
         // HINT: the representative salary could be the first identified item’s Salary; you don’t need to recompute salaries here.
 
         // Step 4: build a list of OccupationSummaryItem objects sorted by descending AdsCount and then label
-
-        // TODO: return a PlacementSummaryResponse containing the grouped summary
+        IReadOnlyList<OccupationSummaryItem> occupations = search.Items.GroupBy(item => $"{item.OccupationSsyk}|{NormalizeOccupationLabel(item.OccupationLabel)}").Select(item =>
+        {
+            return new OccupationSummaryItem(NormalizeOccupationLabel(item.First().OccupationLabel), item.First().OccupationSsyk, item.Count(), item.First().Salary);
+        }).ToList();
         // HINT: use search.Total for the total count, not the number of groups.
-        throw new NotImplementedException();
+        return new PlacementSummaryResponse(query, region, offset, limit, search.Total, occupations);
     }
 
     public async Task<SalaryInfo?> GetSalaryAsync(string ssyk, int? year, CancellationToken cancellationToken)
