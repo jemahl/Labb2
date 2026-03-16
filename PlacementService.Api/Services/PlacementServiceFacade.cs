@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using PlacementService.Api.Models;
@@ -32,25 +33,67 @@ public sealed class PlacementServiceFacade
         CancellationToken cancellationToken)
     {
         // Step 1: call JobSearchClient to get raw items
+        //Höämtar annonser från arbetsförmedlingen
         var result = await _jobSearchClient.SearchAsync(query, region, limit, offset, cancellationToken);
         // TODO: if there are no items, return early
 
+        //inga annonser på arbetsförmedlningen
+        if (!result.Items.Any())
+        {
+            return new PlacementSearchResponse(offset, limit, result.Total, null);
+        }
+
         // Step 2: collect distinct SSYK codes (normalize each code) from the jobSearch result. 
         // HINT: use NormalizeSsyk(item.OccupationSsyk) with LINQ
+        //Hämta ssyk koder från arbetsförmednlign annonser
+        var ssykCodes = result.Items
+            .Select(item => NormalizeSsyk(item.OccupationSsyk))
+            .Distinct()
+            .ToList();
 
         // Step 3: build a dictionary that maps SSYK with SalaryInfo using GetSalaryCachedAsync for each distinct SSYK.
+        //för alla ssyk koder från annonserna hittar vi vilken lön dessa koder har från SCB
+        var salaryDictionary = new Dictionary<string, SalaryInfo?>();
 
-        // Step 4: create a new list of PlacementItem where OccupationSsyk is normalized and Salary is looked up from the dictionary created in Step 3.
-        // HINT: use TryGetValue on the dictionary to look up the salary for each item's normalized SSYK. If no match is found, salary will be null.
-        // HINT: since PlacementItem is a record (not a class), you can use: item with { OccupationSsyk = normalized, Salary = salary } to create a copy with updated fields without rewriting all properties.
-        // NOTE: records behave like classes for most purposes — the key difference here is that their properties are immutable, so with is how you create a modified copy.
+        foreach (var ssyk in ssykCodes)
+        {
+            var salary = await GetSalaryCachedAsync(ssyk, cancellationToken);
+            salaryDictionary.Add(ssyk, salary);
+        }
+
+        // Step 4: create a new list of PlacementItem where OccupationSsyk is 
+        // normalized and Salary is looked up from the dictionary created in Step 3.
+
+        // HINT: use TryGetValue on the dictionary to look up the salary for each 
+        // item's normalized SSYK. If no match is found, salary will be null.
+
+        // HINT: since PlacementItem is a record (not a class), you can use: 
+        // item with { OccupationSsyk = normalized, Salary = salary } to create a copy 
+        // with updated fields without rewriting all properties.
+
+        // NOTE: records behave like classes for most purposes — the key difference 
+        // here is that their properties are immutable, so with is how you create a 
+        // modified copy.
+
+        //Skaap ny lista med varje annons och lönen som hänger ihop med annonsens ssyk kod (från dictionary)
+        var placementItemsList = new List<PlacementItem>();
+
+        foreach (var item in result.Items)
+        {
+            var normalized = NormalizeSsyk(item.OccupationSsyk);
+
+            SalaryInfo? salary;
+            salaryDictionary.TryGetValue(normalized, out salary);
+
+            placementItemsList.Add(item with { OccupationSsyk = normalized, Salary = salary });
+        }
 
         // References:
         // C# records: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/record
         // with keyword: https://learn.microsoft.com/en-us/dotnet/csharp/tutorials/records#nondestructive-mutation
 
         // TODO: return a PlacementSearchResponse with enriched items
-        throw new NotImplementedException();
+        return new PlacementSearchResponse(offset, limit, result.Total, placementItemsList);
     }
 
     public async Task<PlacementSummaryResponse> GetSummaryAsync(
@@ -65,33 +108,72 @@ public sealed class PlacementServiceFacade
         var search = await SearchAsync(query, region, limit, offset, cancellationToken);
 
         // Step 2: group the items by a composite key of SSYK and normalized OccupationLabel
-        // HINT: you can use GroupBy(item => $"{item.OccupationSsyk}|{NormalizeOccupationLabel(item.OccupationLabel)}") to ensure that both the code and the human-readable label define the group.
+        // HINT: you can use GroupBy(item => $"{item.OccupationSsyk}|{NormalizeOccupationLabel(item.OccupationLabel)}") 
+        // to ensure that both the code and the human-readable label define the group.
+        //gruppera dem annonser som har samma ssyk OCH yrkesnamn
+        var groupOfSsyk = search.Items
+            .GroupBy(item => $"{item.OccupationSsyk}|{NormalizeOccupationLabel(item.OccupationLabel)}")
+            .ToList();
 
         // Step 3: for each group, count the number of ads and pick one as a "representative" salary
-        // HINT: the representative salary could be the first identified item’s Salary; you don’t need to recompute salaries here.
+        // HINT: the representative salary could be the first identified item’s Salary; you don’t need 
+        // to recompute salaries here.
+        //skapa OccupationSummaryItem för varje grupp och lägg till all info 
+        var groupOfOccupations = new List<OccupationSummaryItem>();
+
+        foreach (var group in groupOfSsyk)
+        {
+            var label = NormalizeOccupationLabel(group.First().OccupationLabel);
+            var ssyk = group.First().OccupationSsyk;
+            var numberOfAds = group.Count();
+            var salary = group.First().Salary;
+            groupOfOccupations.Add(new OccupationSummaryItem(label, ssyk, numberOfAds, salary));
+        }
 
         // Step 4: build a list of OccupationSummaryItem objects sorted by descending AdsCount and then label
+        //sortera listan av gruppyrken
+        var sortedList = groupOfOccupations
+            .OrderByDescending(x => x.AdsCount)
+            .ThenBy(x => x.OccupationLabel)
+            .ToList();
 
         // TODO: return a PlacementSummaryResponse containing the grouped summary
         // HINT: use search.Total for the total count, not the number of groups.
-        throw new NotImplementedException();
+        return new PlacementSummaryResponse(query, region, offset, limit, search.Total, sortedList);
     }
 
     public async Task<SalaryInfo?> GetSalaryAsync(string ssyk, int? year, CancellationToken cancellationToken)
     {
         // Step 1: normalize the incoming SSYK code so that "1234" and "123401" are treated consistently
-        // HINT: use NormalizeSsyk(ssyk) to strip whitespace and non-digit characters. If the normalized code is null or empty, return null (invalid input)
+        // HINT: use NormalizeSsyk(ssyk) to strip whitespace and non-digit characters. 
+        // If the normalized code is null or empty, return null (invalid input)
+        var normalizedSsyk = NormalizeSsyk(ssyk);
 
-        // Step 2: build a cache key combining the SSYK and the year (or "latest" if year is null) and check the IMemoryCache for a cached SalaryInfo
-        // HINT: TryGetValue returns true/false and the out parameter will hold the cached value.
+        if (string.IsNullOrEmpty(normalizedSsyk))
+        {
+            return null;
+        }
+
+        // Step 2: build a cache key combining the SSYK and the year (or "latest" if year 
+        // is null) and check the IMemoryCache for a cached SalaryInfo
+        // HINT: TryGetValue returns true/false and the out parameter 
+        // will hold the cached value.
+
+        var cacheKey = year is null ? $"salary:{normalizedSsyk}:latest" : $"salary:{normalizedSsyk}:{year}";
+        if (_cache.TryGetValue(cacheKey, out SalaryInfo? cached))
+        {
+            return cached;
+        }
 
         // Step 3: if not cached, call the SCB client to fetch the salary for this SSYK and year
         // HINT: await _scbPxWebClient.GetSalaryAsync(normalized, year, cancellationToken)
+        var salary = await _scbPxWebClient.GetSalaryAsync(normalizedSsyk, year, cancellationToken);
 
         // Step 4: store the fetched salary in the cache with an expiration based on _scbOptions.CacheMinutes
+        _cache.Set(cacheKey, salary, TimeSpan.FromMinutes(_scbOptions.CacheMinutes));
 
         // TODO: return the salary (or null if SCB has no data)
-        throw new NotImplementedException();
+        return salary;
     }
 
     private async Task<SalaryInfo?> GetSalaryCachedAsync(string ssyk, CancellationToken cancellationToken)
