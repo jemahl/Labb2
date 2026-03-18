@@ -40,7 +40,7 @@ public sealed class PlacementServiceFacade
         //inga annonser på arbetsförmedlningen
         if (!result.Items.Any())
         {
-            return new PlacementSearchResponse(offset, limit, result.Total, null);
+            return new PlacementSearchResponse(offset, limit, result.Total, new List<PlacementItem>());
         }
 
         // Step 2: collect distinct SSYK codes (normalize each code) from the jobSearch result. 
@@ -48,6 +48,7 @@ public sealed class PlacementServiceFacade
         //Hämta ssyk koder från arbetsförmednlign annonser
         var ssykCodes = result.Items
             .Select(item => NormalizeSsyk(item.OccupationSsyk))
+            .Where(ssyk => !string.IsNullOrEmpty(ssyk))
             .Distinct()
             .ToList();
 
@@ -57,8 +58,19 @@ public sealed class PlacementServiceFacade
 
         foreach (var ssyk in ssykCodes)
         {
-            var salary = await GetSalaryCachedAsync(ssyk, cancellationToken);
-            salaryDictionary.Add(ssyk, salary);
+            if (ssyk != null)
+            {
+                SalaryInfo? salary;
+                try
+                {
+                    salary = await GetSalaryCachedAsync(ssyk, cancellationToken);
+                }
+                catch
+                {
+                    salary = null;
+                }
+                salaryDictionary.Add(ssyk, salary);
+            }
         }
 
         // Step 4: create a new list of PlacementItem where OccupationSsyk is 
@@ -83,7 +95,14 @@ public sealed class PlacementServiceFacade
             var normalized = NormalizeSsyk(item.OccupationSsyk);
 
             SalaryInfo? salary;
-            salaryDictionary.TryGetValue(normalized, out salary);
+            if (!string.IsNullOrEmpty(normalized))
+            {
+                salaryDictionary.TryGetValue(normalized, out salary);
+            }
+            else
+            {
+                salary = null;
+            }
 
             placementItemsList.Add(item with { OccupationSsyk = normalized, Salary = salary });
         }
@@ -183,7 +202,6 @@ public sealed class PlacementServiceFacade
         {
             return cached;
         }
-
         var salary = await _scbPxWebClient.GetSalaryAsync(ssyk, null, cancellationToken);
         _cache.Set(cacheKey, salary, TimeSpan.FromMinutes(_scbOptions.CacheMinutes));
         return salary;
