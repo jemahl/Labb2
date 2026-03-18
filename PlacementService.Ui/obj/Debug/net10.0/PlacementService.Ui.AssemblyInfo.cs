@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PlacementService.Ui")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ae0f1c9a72d3f8e8d9fc84f1bf7aa634ef4a8f2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3da218ac7abc07f73b15ba9dcf77dade49adf374")]
 [assembly: System.Reflection.AssemblyProductAttribute("PlacementService.Ui")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PlacementService.Ui")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

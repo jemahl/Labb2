@@ -12,12 +12,14 @@
     <div class="row g-3 align-items-end">
         <div class="col-12 col-md-6">
             <label class="form-label" for="query">Sökfras</label>
-            <InputText id="query" class="form-control" @bind-Value="search.Query" placeholder="t.ex. systemutvecklare" />
+            <InputText id="query" class="form-control" @bind-Value="search.Query"
+                       placeholder="t.ex. systemutvecklare" />
             <ValidationMessage For="() => search.Query" />
         </div>
         <div class="col-12 col-md-4">
             <label class="form-label" for="region">Region (valfritt)</label>
-            <InputText id="region" class="form-control" @bind-Value="search.Region" placeholder="t.ex. Stockholms län" />
+            <InputText id="region" class="form-control" @bind-Value="search.Region"
+                       placeholder="t.ex. Stockholms län" />
         </div>
         <div class="col-6 col-md-2">
             <label class="form-label" for="limit">Antal</label>
@@ -42,34 +44,112 @@ else if (!string.IsNullOrWhiteSpace(errorMessage))
 else if (results is not null)
 {
     <div class="mt-3">
-        <p>Visar @results.Items.Count av @results.Total annonser.</p>
+        @if (results.Items.Count == 0)
+        {
+            <div class="alert alert-warning">Inga resultat hittades</div>
+        }
+        else
+        {
+            
+        int X = search.Offset + 1;
+        int Y = search.Offset + results.Items.Count;
+
+        <p>Visar @X-@Y av @results.Total.</p>
 
         @if (summary?.Occupations?.Count > 0)
         {
             <!-- SUMMARY WARNING UPON PARTIAL SUCCESS -->
             <!-- TODO: Check if there's a warning and, if so, display it -->
-            <!-- Step 1: Check whether there is a warning in summaryWarning or not -->
-
+            <!-- Step 1: Check whether there is a warning in summaryWarning or not -->            
             <!-- Step 2: If there is; Add a <div class="alert alert-warning"> that displays the warning. -->
+            @if (!string.IsNullOrWhiteSpace(summaryWarning))
+            {
+                <div class="alert alert-warning">@summaryWarning</div>
+            }
+            else{
+                <!-- SUMMARY RESULT TABLE -->
+                <!-- TODO: Create a table with the summary data from summary.Occupations -->
+                <!-- Step 1: Add descriptive text such as a header and create a <table> -->
+                <h3 class="mt-4">Löneöversikt per yrkesgrupp</h3>
 
-            <!-- SUMMARY RESULT TABLE -->
-            <!-- TODO: Create a table with the summary data from summary.Occupations -->
-            <!-- Step 1: Add descriptive text such as a header and create a <table> -->
-            
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Yrke</th>
+                        <th>SSYK</th>
+                        <th>Antal</th>
+                        <th>Lön</th>
+                        <th>År</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var occupation in summary.Occupations)
+                    {
+                        <tr>
+                            <td>@(occupation.OccupationLabel ?? "-")</td>
+                            <td>@(occupation.OccupationSsyk ?? "-")</td>
+                            <td>@(occupation.AdsCount.ToString() ?? "-")</td>
+                            <td>
+                                @(occupation.Salary?.MonthlySalarySek.HasValue == true ? $"{occupation.Salary.MonthlySalarySek} kr": "-")
+                            </td>
+                            <td>@(occupation.Salary?.Year.ToString() ?? "-")</td>
+                        </tr>
+                    }
+                </tbody>
+                </table>
             <!-- Step 2: Add a header row to the table and loop over summary.Occupations to populate the table body (<tbody>) -->
 
             <!-- Step 3: List relevant data in a user friendly manner. I.e., take UX and format into consideration -->
+
+            }
+
         }
 
         <!-- AD RESULT TABLE -->
         <!-- TODO: Create a table with the ad data from results.Items -->
         <!-- Step 1: Follow the steps from the summary table problem above -->
+        <h3 class="mt-4">Jobbannonser</h3>
+
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Titel</th>
+                    <th>Arbetsgivare</th>
+                    <th>Region</th>
+                    <th>Kommun</th>
+                    <th>Yrke</th>
+                    <th>SSYK</th>
+                    <th>Publicerad</th>
+                    <th>Lön</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in results.Items)
+                {
+                    <tr>
+                        <td>@(item.Headline ?? "-")</td>
+                        <td>@(item.Employer ?? "-")</td>
+                        <td>@(item.Region ?? "-")</td>
+                        <td>@(item.Municipality ?? "-")</td>
+                        <td>@(item.OccupationLabel ?? "-")</td>
+                        <td>@(item.OccupationSsyk ?? "-")</td>
+                        <td>@(item.PublishedAt?.ToString("yyyy-MM-dd") ?? "-")</td>
+                        <td>
+                            @(item.Salary?.MonthlySalarySek.HasValue == true ? $"{item.Salary.MonthlySalarySek} kr" : "-")
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
 
         <div class="d-flex gap-2">
             <!-- PAGINATION -->
             <!-- TODO: Call PrevPage / NextPage and disable buttons where applicable -->
             <!-- HINT: Look at CanGoBack/CanGoForward. Use @onclick to call functions on button press. -->
+            <button class="btn btn-secondary" @onclick="PrevPage" disabled="@(!CanGoBack)">Föregående</button>
+            <button class="btn btn-secondary" @onclick="NextPage" disabled="@(!CanGoForward)">Nästa</button>
         </div>
+        }
     </div>
 }
 
@@ -88,43 +168,105 @@ else if (results is not null)
     private async Task HandleSearch()
     {
         // TODO: Reset offset and call LoadAsync()
-        // NOTE: Task.CompletedTask should be replaced
-        await Task.CompletedTask;
+        search.Offset = 0;
+        await LoadAsync(true);
     }
 
     private async Task PrevPage()
     {
         // TODO: lower the value of offset by limit and call LoadAsync()
-        // NOTE: Task.CompletedTask should be replaced
-        await Task.CompletedTask;
+        if (CanGoBack)
+        {
+            search.Offset -= search.Limit;
+            await LoadAsync(false);
+        }
     }
 
     private async Task NextPage()
     {
         // TODO: increase the value of offset by limit and call LoadAsync()
-        // NOTE: Task.CompletedTask should be replaced
-        await Task.CompletedTask;
+        if(CanGoForward){
+            search.Offset += search.Limit;
+            await LoadAsync(false);
+        }
     }
 
     private async Task LoadAsync(bool refreshSummary)
     {
-        // TODO: implement the load logic described in Section 6 within the UI guidebook. In short:
-        // Step 1: set isLoading to true, errorMessage to null, results to null, and summaryWarning to null.
+        try{
+            // TODO: implement the load logic described in Section 6 within the UI guidebook. In short:
+            // Step 1: set isLoading to true, errorMessage to null, results to null, and summaryWarning to null.
+            isLoading = true;
+            errorMessage = null;
+            results = null;
+            summaryWarning = null;
 
-        // Step 2: check if search.Query is empty. If so, set errorMessage to inform the user that a search phrase is required. null the summary variables (summary, summaryCacheKey, summaryWarning), set isLoading to false, and exit.
+            // Step 2: check if search.Query is empty. If so, set errorMessage to inform
+            //the user that a search phrase is required. null the summary variables
+            //(summary, summaryCacheKey, summaryWarning), set isLoading to false, and exit.
+            if (string.IsNullOrWhiteSpace(search.Query))
+            {
+                errorMessage = "Du måste ange en sökfras";
+                summary = null;
+                summaryCacheKey = null;
+                summaryWarning = null;
+                isLoading = false;
+                return;
+            }
 
-        // Step 3: fetch the search response from ApiClient.SearchAsync() by including (query, region, limit, offset, CancellationToken.None).
+            // Step 3: fetch the search response from ApiClient.SearchAsync() by including (query, region, limit, offset,
+            //CancellationToken.None).
+            ApiResult<PlacementSearchResponse>? searchResult = await ApiClient.SearchAsync(
+                search.Query, search.Region, search.Limit, search.Offset, CancellationToken.None);
 
-        // Step 4: if the search succeeded and there is data in the response, check whether the summary needs to be reloaded. The summary should be reloaded if refreshSummary is true, summary is null, or the query/region has changed.
-        // HINT: summaryCacheKey can be a string combining query and region, e.g. $"{query}|{region}".
+            // Step 4: if the search succeeded and there is data in the response, check 
+            //whether the summary needs to be reloaded. The summary should be reloaded if 
+            //refreshSummary is true, summary is null, or the query / region has changed.
+            // HINT: summaryCacheKey can be a string combining query and region, e.g. $"{query}|{region}".
+            if (!searchResult.IsSuccess || searchResult.Data == null)
+            {
+                errorMessage = searchResult.Error ?? "Ett fel uppstod vid sökning";
+                summary = null;
+                summaryCacheKey = null;
+                summaryWarning = null;
+                isLoading = false;
+                return;
+            }
+            results = searchResult.Data;
 
-        // If a reload is needed, call ApiClient.SummaryAsync() with (query, region, 100, 0, CancellationToken.None).
-        // On success, update summary and summaryCacheKey. On failure, set summaryWarning to a user-friendly message
-        // and null summary and summaryCacheKey, so the ad list is still shown.
+            //Min sökning för att kolla om den ändrats
+            string newCacheKey = $"{search.Query}|{search.Region}";
 
+            bool shouldRefresh = refreshSummary || summary == null || summaryCacheKey != newCacheKey;
+
+            // If a reload is needed, call ApiClient.SummaryAsync() with (query, region, 100, 0, CancellationToken.None).
+            // On success, update summary and summaryCacheKey. On failure, set summaryWarning to a user-friendly message
+            // and null summary and summaryCacheKey, so the ad list is still shown.
+
+            if (shouldRefresh)
+            {
+                ApiResult<PlacementSummaryResponse>? summaryResult = await ApiClient.SummaryAsync(
+                    search.Query, search.Region, 100, 0, CancellationToken.None);
+
+                if (summaryResult.IsSuccess && summaryResult.Data != null)
+                {
+                    summary = summaryResult.Data;
+                    summaryCacheKey = newCacheKey;
+                }
+                else
+                {
+                    summaryWarning = summaryResult.Error ?? "Kunde inte hämta sammanfattning";
+                    summary = null;
+                    summaryCacheKey = null;
+                }
+            }
         // Step 5: handle errors that occur, e.g., if the search is unsuccessful and set a relevant errorMessage + reset summary, summaryCacheKey, and summaryWarning.
-
+        }
         // Step 6: in the finally block, reset isLoading.
+        finally
+        {
+            isLoading = false;
+        }
     }
 
     private sealed class SearchInput

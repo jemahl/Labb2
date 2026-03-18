@@ -1,10 +1,10 @@
 {
   "version": 2,
-  "dgSpecHash": "Nrws/cL6WQU=",
+  "dgSpecHash": "WuhAzUFaBos=",
   "success": true,
-  "projectFilePath": "/Users/majaliindstrom/Desktop/Labb2/PlacementService.Ui/PlacementService.Ui.csproj",
+  "projectFilePath": "C:\\Users\\Jessica\\Desktop\\Skola\\Y3\\Informationsinfrastruktur\\Labb2\\starter\\PlacementService.Ui\\PlacementService.Ui.csproj",
   "expectedPackageFiles": [
-    "/Users/majaliindstrom/.nuget/packages/microsoft.aspnetcore.app.internal.assets/10.0.3/microsoft.aspnetcore.app.internal.assets.10.0.3.nupkg.sha512"
+    "C:\\Users\\Jessica\\.nuget\\packages\\microsoft.aspnetcore.app.internal.assets\\10.0.3\\microsoft.aspnetcore.app.internal.assets.10.0.3.nupkg.sha512"
   ],
   "logs": []
 }
